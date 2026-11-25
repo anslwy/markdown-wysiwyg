@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Markdown WYSIWYG – dev harness</title>
+    <style>
+        .dev-shell { display: grid; grid-template-columns: 1fr 1fr; height: 100vh; }
+        .dev-shell > section { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+        .dev-shell header { font: 12px var(--font-sans); padding: 6px 10px; border-bottom: 1px solid var(--color-border); display: flex; gap: 8px; align-items: center; }
+        #app { flex: 1; min-height: 0; }
+        #source { flex: 1; resize: none; border: 0; border-left: 1px solid var(--color-border); padding: 12px; font: 13px/1.5 var(--font-mono); background: var(--color-bg); color: var(--color-text); outline: none; }
+        #log { font: 11px var(--font-mono); color: var(--color-text-secondary); }
+    </style>
+</head>
+<body class="vscode-light">
+    <div class="dev-shell">
+        <section>
+            <header>
+                <strong>Editor (webview)</strong>
+                <label><input type="checkbox" id="dark" /> dark</label>
+                <span id="log"></span>
+            </header>
+            <div id="app"></div>
+        </section>
+        <section>
+            <header><strong>Markdown document (what VSCode would save)</strong></header>
+            <textarea id="source" spellcheck="false"></textarea>
+        </section>
+    </div>
+    <script type="module" src="./main.ts"></script>
+</body>
+</html>

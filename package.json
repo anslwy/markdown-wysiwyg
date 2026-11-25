@@ -1,0 +1,84 @@
+{
+  "name": "markdown-wysiwyg",
+  "displayName": "Markdown WYSIWYG",
+  "description": "WYSIWYG / Preview / Source markdown editor for VSCode.",
+  "version": "0.0.1",
+  "publisher": "wysiwyg",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "browser": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "markdownWysiwyg.editor",
+        "displayName": "Markdown WYSIWYG",
+        "selector": [
+          {
+            "filenamePattern": "*.md"
+          },
+          {
+            "filenamePattern": "*.markdown"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "commands": [
+      {
+        "command": "markdownWysiwyg.openWysiwyg",
+        "title": "Open in WYSIWYG",
+        "category": "Markdown WYSIWYG",
+        "icon": "$(sparkle)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "markdownWysiwyg.openWysiwyg",
+          "when": "editorLangId == markdown && activeCustomEditorId != markdownWysiwyg.editor",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build:webview": "vite build",
+    "build:ext": "node esbuild.mjs",
+    "build": "npm run build:webview && npm run build:ext",
+    "watch": "concurrently -k \"vite build --watch\" \"node esbuild.mjs --watch\"",
+    "dev": "vite --config vite.dev.config.ts",
+    "web": "npm run build && vscode-test-web --quality=stable --browserType=none --port=3010 --extensionDevelopmentPath=. ./sample",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run",
+    "package": "npm run build && vsce package --no-dependencies --allow-missing-repository"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^6.2.0",
+    "@tsconfig/svelte": "^5.0.4",
+    "@types/turndown": "^5.0.6",
+    "@types/vscode": "^1.90.0",
+    "@vscode/test-web": "^0.0.81",
+    "@vscode/vsce": "^3.2.0",
+    "concurrently": "^9.1.0",
+    "esbuild": "^0.25.0",
+    "jsdom": "^26.0.0",
+    "svelte": "^5.39.5",
+    "svelte-check": "^4.3.0",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.7",
+    "vitest": "^3.2.0"
+  },
+  "dependencies": {
+    "marked": "^18.1.3",
+    "turndown": "^7.2.4",
+    "turndown-plugin-gfm": "^1.0.2"
+  }
+}
