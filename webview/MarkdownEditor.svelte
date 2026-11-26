@@ -4332,7 +4332,7 @@
 
     .wysiwyg-editing {
         outline: none;
-        cursor: text;
+        cursor: var(--cursor-text, text);
     }
 
     .wysiwyg-editing :global(a) {

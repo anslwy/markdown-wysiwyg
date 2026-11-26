@@ -8,6 +8,22 @@
     --font-mono: var(--vscode-editor-font-family, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
 }
 
+/* High-contrast I-beam text cursor with halo so it remains clearly visible on
+   Windows light/dark themes where Chromium's native IDC_IBEAM can blend into
+   white backgrounds. */
+:root,
+:root[data-theme='light'],
+body.vscode-light,
+body.vscode-high-contrast-light {
+    --cursor-text: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='24' viewBox='0 0 16 24'%3E%3Cpath d='M5 4h6M5 20h6M8 4v16' fill='none' stroke='%23ffffff' stroke-width='3.5' stroke-linecap='round'/%3E%3Cpath d='M5 4h6M5 20h6M8 4v16' fill='none' stroke='%23111827' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") 8 12, text;
+}
+
+:root[data-theme='dark'],
+body.vscode-dark,
+body.vscode-high-contrast {
+    --cursor-text: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='24' viewBox='0 0 16 24'%3E%3Cpath d='M5 4h6M5 20h6M8 4v16' fill='none' stroke='%230f172a' stroke-width='3.5' stroke-linecap='round'/%3E%3Cpath d='M5 4h6M5 20h6M8 4v16' fill='none' stroke='%23f8fafc' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") 8 12, text;
+}
+
 /* VSCode sets data-vscode-theme-kind on the webview body; the dev page doesn't,
    so it keeps its default palette. */
 body[data-vscode-theme-kind] {
@@ -33,4 +49,24 @@ body {
 
 #app {
     height: 100%;
+}
+
+.markdown-preview.markdown-body,
+.wysiwyg-editing,
+input[type='text'],
+input[type='search'],
+textarea {
+    cursor: var(--cursor-text, text);
+}
+
+.wysiwyg-editing,
+input,
+textarea {
+    caret-color: var(--vscode-editorCursor-foreground, var(--color-text));
+}
+
+.markdown-preview.markdown-body a,
+.markdown-preview.markdown-body button,
+.markdown-preview.markdown-body input[type='checkbox'] {
+    cursor: pointer;
 }
