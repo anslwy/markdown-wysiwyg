@@ -94,6 +94,9 @@ class MarkdownEditorProvider implements vscode.CustomTextEditorProvider {
                 case 'openLink':
                     await this.openLink(msg.href, docFolder);
                     break;
+                case 'copyText':
+                    await vscode.env.clipboard.writeText(msg.text);
+                    break;
                 case 'saveImage':
                     post({ type: 'imageSaved', requestId: msg.requestId, link: await this.saveImage(msg.dataUrl, docFolder) });
                     break;

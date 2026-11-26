@@ -38,6 +38,10 @@ const host: HostApi = {
                 log(`openLink → ${msg.href}`);
                 window.open(msg.href, '_blank', 'noopener');
                 break;
+            case 'copyText':
+                log(`copyText → ${msg.text}`);
+                void navigator.clipboard?.writeText(msg.text).catch(() => {});
+                break;
             case 'saveImage':
                 // No file system here: keep the image inline as a data URL.
                 toWebview({ type: 'imageSaved', requestId: msg.requestId, link: msg.dataUrl });

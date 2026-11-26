@@ -2,7 +2,7 @@
   "name": "markdown-wysiwyg",
   "displayName": "Markdown WYSIWYG",
   "description": "WYSIWYG / Preview / Source markdown editor for VSCode.",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "anslwy",
   "private": true,
   "license": "MIT",

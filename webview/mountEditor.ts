@@ -62,6 +62,7 @@ export function startEditor(host: HostApi, target: HTMLElement) {
                             else host.postMessage({ type: 'mode', mode });
                         },
                         onOpenLink: (href: string) => host.postMessage({ type: 'openLink', href }),
+                        onCopyText: (text: string) => host.postMessage({ type: 'copyText', text }),
                         confirmAction: (message: string, confirmLabel: string) =>
                             request<boolean>((requestId) => ({ type: 'confirm', requestId, message, confirmLabel }))
                     }

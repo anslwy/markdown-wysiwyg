@@ -15,6 +15,7 @@ export type WebviewToHost =
     | { type: 'mode'; mode: ViewMode }
     | { type: 'openSource' }
     | { type: 'openLink'; href: string }
+    | { type: 'copyText'; text: string }
     | { type: 'saveImage'; requestId: string; dataUrl: string }
     | { type: 'confirm'; requestId: string; message: string; confirmLabel: string };
 

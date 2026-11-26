@@ -4,6 +4,7 @@
     import { languageIconSvg } from './lib/languageIcon';
     import { renderMarkdown, renderMarkdownPlain, htmlToMarkdown, removeFencedCodeBlock, wrapImageThumbnails, wrapCodeBlocksWithCopy, highlightCodeBlocks, getCodeBlockLanguage, setCodeBlockLanguage, normalizeCodeLanguage, ensureTrailingEmptyLine, ensureFileMentionCarets, prepareTaskListCheckboxes, isTaskListItem, isEmptyTaskListItem, createTaskCheckbox, ensureTaskCheckbox, ensureTaskItemCaretAnchor, removeTaskCheckbox, inlineCodeSpanHtml, INLINE_CODE_STYLE_MARKER, THUMB_WRAPPER_CLASS, THUMB_DELETE_CLASS, CODE_COPY_WRAPPER_CLASS, CODE_LANGUAGE_INPUT_CLASS, CODE_LANGUAGE_DATALIST_ID, CODE_LANGUAGE_OPTIONS, resolvePastedImages, isUrlLike, normalizeUrl, linkHtml, parsePlaygroundFileId, playgroundFileHref, extractPlaygroundFileId, fileMentionHtml, FILE_MENTION_CLASS } from './lib/markdown';
     import { storePastedImage, deletePastedImage, parsePastedImageLink } from './lib/imageStore';
+    import { findLinkHrefAtTarget, clampMenuPosition, copyTextToClipboard } from './lib/linkContextMenu';
 
     // ===== VSCode port: host-facing API =====================================
     // The playground drives this editor from its file store and tab model. Here
@@ -17,6 +18,7 @@
     export let onChange: (markdown: string) => void = () => {};
     export let onModeChange: (mode: MarkdownViewMode | 'source') => void = () => {};
     export let onOpenLink: (href: string) => void = (href) => { window.open(href, '_blank', 'noopener,noreferrer'); };
+    export let onCopyText: ((text: string) => void) | undefined = undefined;
     export let confirmAction: (message: string, confirmLabel: string) => Promise<boolean> = async (message) => window.confirm(message);
 
     /** Replace the document from outside (e.g. the text editor changed it). */
@@ -3174,6 +3176,49 @@
         savedLinkHistoryBefore = null;
     }
 
+    // Custom context menu when right-clicking a link in WYSIWYG or Preview.
+    let linkContextMenu: { href: string; left: number; top: number } | null = null;
+    let linkContextMenuEl: HTMLDivElement | null = null;
+
+    function closeLinkContextMenu() {
+        linkContextMenu = null;
+    }
+
+    async function handleLinkContextMenu(event: MouseEvent) {
+        const container = event.currentTarget as HTMLElement | null;
+        const href = findLinkHrefAtTarget(event.target, container);
+        if (!href) {
+            closeLinkContextMenu();
+            return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        const vw = typeof window !== 'undefined' ? window.innerWidth : 1000;
+        const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+        const initial = clampMenuPosition(event.clientX, event.clientY, 180, 76, vw, vh);
+        linkContextMenu = { href, left: initial.left, top: initial.top };
+        await tick();
+        if (linkContextMenu && linkContextMenuEl) {
+            const rect = linkContextMenuEl.getBoundingClientRect();
+            const clamped = clampMenuPosition(event.clientX, event.clientY, rect.width, rect.height, vw, vh);
+            linkContextMenu = { href: linkContextMenu.href, left: clamped.left, top: clamped.top };
+        }
+    }
+
+    async function handleCopyLinkFromMenu() {
+        const href = linkContextMenu?.href;
+        closeLinkContextMenu();
+        if (!href) return;
+        await copyTextToClipboard(href, onCopyText);
+    }
+
+    function handleOpenLinkFromMenu() {
+        const href = linkContextMenu?.href;
+        closeLinkContextMenu();
+        if (!href) return;
+        onOpenLink(href);
+    }
+
     // ===== VSCode port: window-level handlers (from the playground's onMount)
     onMount(() => {
         const handleDocClick = (e: MouseEvent) => {
@@ -3182,9 +3227,21 @@
                 if (!target.closest('.mention-popup') && !wysiwygEl?.contains(target)) closeMentionPopup();
             }
         };
+        const handleDocMouseDown = (e: MouseEvent) => {
+            if (linkContextMenu) {
+                const target = e.target instanceof Element ? e.target : null;
+                if (!target?.closest('.link-context-menu')) closeLinkContextMenu();
+            }
+        };
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.defaultPrevented) return;
             if (e.key === 'Escape') {
+                if (linkContextMenu) {
+                    closeLinkContextMenu();
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                }
                 closeLightbox();
                 closeMentionPopup();
             }
@@ -3196,12 +3253,18 @@
         };
         const handleUnload = () => commitWysiwygEdits();
         document.addEventListener('click', handleDocClick);
+        document.addEventListener('mousedown', handleDocMouseDown, true);
         window.addEventListener('keydown', handleKeyDown, true);
+        window.addEventListener('scroll', closeLinkContextMenu, true);
+        window.addEventListener('blur', closeLinkContextMenu);
         window.addEventListener('beforeunload', handleUnload);
         if (mode === 'wysiwyg') void enterPreviewEditMode(true);
         return () => {
             document.removeEventListener('click', handleDocClick);
+            document.removeEventListener('mousedown', handleDocMouseDown, true);
             window.removeEventListener('keydown', handleKeyDown, true);
+            window.removeEventListener('scroll', closeLinkContextMenu, true);
+            window.removeEventListener('blur', closeLinkContextMenu);
             window.removeEventListener('beforeunload', handleUnload);
         };
     });
@@ -3428,6 +3491,7 @@
                 on:keydown={handleWysiwygKeydown}
                 on:paste={handleWysiwygPaste}
                 on:click={handleWysiwygClick}
+                on:contextmenu={handleLinkContextMenu}
                 on:change={handleWysiwygChange}
                 on:blur={handleWysiwygBlur}
             ></div>
@@ -3440,7 +3504,7 @@
     {:else}
         <!-- svelte-ignore a11y-click-events-have-key-events -->
         <!-- svelte-ignore a11y-no-static-element-interactions -->
-        <div class="markdown-preview markdown-body" bind:this={previewEl} on:click={handlePreviewClick}>
+        <div class="markdown-preview markdown-body" bind:this={previewEl} on:click={handlePreviewClick} on:contextmenu={handleLinkContextMenu}>
             {@html previewHtml}
         </div>
     {/if}
@@ -3511,6 +3575,41 @@
                     </button>
                 {/if}
             </div>
+        </div>
+    {/if}
+    {#if linkContextMenu}
+        <div
+            class="link-context-menu"
+            bind:this={linkContextMenuEl}
+            style="left: {linkContextMenu.left}px; top: {linkContextMenu.top}px;"
+            role="menu"
+            aria-label="Link actions"
+        >
+            <button
+                type="button"
+                class="link-context-menu-item"
+                role="menuitem"
+                on:click={handleCopyLinkFromMenu}
+            >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span>Copy Link</span>
+            </button>
+            <button
+                type="button"
+                class="link-context-menu-item"
+                role="menuitem"
+                on:click={handleOpenLinkFromMenu}
+            >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+                <span>Open Link</span>
+            </button>
         </div>
     {/if}
     </div>
@@ -5113,5 +5212,45 @@
         background-color: var(--color-highlight);
         border-radius: 50%;
         border: 1px solid var(--color-bg);
+    }
+
+    .link-context-menu {
+        position: fixed;
+        z-index: 10050;
+        min-width: 160px;
+        padding: 4px;
+        border-radius: 6px;
+        background: var(--vscode-menu-background, var(--color-surface));
+        color: var(--vscode-menu-foreground, var(--color-text));
+        border: 1px solid var(--vscode-menu-border, var(--color-border));
+        box-shadow: 0 4px 16px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.25));
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        user-select: none;
+    }
+
+    .link-context-menu-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 6px 10px;
+        border: none;
+        border-radius: 4px;
+        background: transparent;
+        color: inherit;
+        font-family: var(--font-sans);
+        font-size: 13px;
+        line-height: 1.25;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .link-context-menu-item:hover,
+    .link-context-menu-item:focus-visible {
+        outline: none;
+        background: var(--vscode-menu-selectionBackground, var(--color-surface-hover));
+        color: var(--vscode-menu-selectionForeground, var(--color-text));
     }
 </style>
